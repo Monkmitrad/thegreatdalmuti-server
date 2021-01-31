@@ -3,6 +3,7 @@ const router = new express.Router();
 const { body, header, validationResult } = require('express-validator');
 
 const config = require('../config');
+const dbHandler = require('../controllers/dbHandler');
 
 const baseURL = config.get('api_baseURL');
 
@@ -23,7 +24,7 @@ router.post(baseURL + 'login',[
 ], async (req, res) => {
     try {
         validationResult(req).throw();
-
+        
         // login user and return jwt
     } catch (err) {
         if (err.errors) {
