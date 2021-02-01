@@ -13,6 +13,12 @@ db.once('open', function () {
 	console.log('Connection to MongoDB established');
 });
 
+// Models
+
+const gameModel = require('../models/game').gameModel;
+const playerModel = require('../models/player').playerModel;
+const deckModel = require('../models/deck');
+
 // DB methods
 
 /**
@@ -31,6 +37,8 @@ async function createGame() {
  * @returns {Promise<string>} jwt for further authorization
  */
 async function loginPlayer(gameID, playerName) {
+    const game = await getGame(gameID);
+    
     return 'jwt';
 }
 
@@ -64,8 +72,48 @@ function generateGameID() {
     }
 }
 
+/**
+ * checks if a game with the given gameID exists
+ * @param {number} gameID
+ * @returns {Promise<boolean>} does game exist
+ */
+async function checkGame(gameID) {
+    try {
+        if (await gameModel.findOne({gameID})) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (error) {
+        console.log(error);
+        return false;
+    }
+}
+
+async function getGame(gameID) {
+    try {
+        return await gameModel.findOne({gameID});
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function checkPlayer(gameID, playerName) {
+    const game = await getGame(gameID);
+    const player = game.players.find((player) => player.name === playerName);
+    if (player) {
+        // name already in use
+        return false;
+    } else {
+        // name not used
+        return true;
+    }
+}
+
 module.exports = {
     create: createGame,
     login: loginPlayer,
-    ready: playerReady
+    ready: playerReady,
+    checkGame: checkGame,
+    checkPlayer: checkPlayer
 };
