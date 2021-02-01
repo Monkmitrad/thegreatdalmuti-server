@@ -2,15 +2,15 @@ const mongoose = require('mongoose');
 const config = require('../config');
 
 mongoose.connect(`mongodb://${config.get("db_host")}:${config.get("db_port")}/${config.get("db_name")}`, {
-	useNewUrlParser: true,
-	useUnifiedTopology: true,
-	useFindAndModify: false,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useFindAndModify: false,
 });
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function () {
-	console.log('Connection to MongoDB established');
+    console.log('Connection to MongoDB established');
 });
 
 // Models
@@ -87,6 +87,61 @@ async function disconnectPlayer(gameID, playerName) {
     await game.save();
 }
 
+/**
+ * starts game
+ * @param {number} gameID id of gamg
+ * @returns {Promise<void>}
+ */
+async function startGame(gameID) {
+    const game = await getGame(gameID);
+    game.gameStatus = true;
+    await game.save();
+}
+
+/**
+ * fetches and returns game data for specific
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @returns {Promise<gameModel>} gameData
+ */
+async function getLobbyData(gameID, playerName) {
+    const game = (await getGame(gameID)).toObject();
+    game.players.forEach(player => {
+        delete player._id;
+        delete player.cards;
+        delete player.jwt;
+        delete player.rank;
+    });
+    delete game._id;
+    delete game.__v;
+    return game;
+}
+
+/**
+ * fetches and returns game data for specific
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @returns {Promise<gameModel>} gameData
+ */
+async function getGameData(gameID, playerName) {
+    const game = (await getGame(gameID)).toObject();
+    game.players.forEach(player => {
+        if (player.name === playerName) {
+            delete player._id;
+            delete player.ready;
+            delete player.jwt;
+        } else {
+            delete player._id;
+            delete player.ready;
+            delete player.jwt;
+            player.cards = new Array(player.cards.length);
+        }
+    });
+    delete game._id;
+    delete game.__v;
+    return game;
+}
+
 // Additional methods
 
 /**
@@ -94,10 +149,10 @@ async function disconnectPlayer(gameID, playerName) {
  * @returns {number} generated 4-digit number
  */
 function generateGameID() {
-	const id = (Math.floor(Math.random() * 10000) + 10000)
-		.toString()
+    const id = (Math.floor(Math.random() * 10000) + 10000)
+        .toString()
         .substring(1);
-    if ((Math.log(id) * Math.LOG10E + 1 | 0 ) === 4) {
+    if ((Math.log(id) * Math.LOG10E + 1 | 0) === 4) {
         // 4 digit number
         return Number(id);
     } else {
@@ -113,7 +168,7 @@ function generateGameID() {
  */
 async function checkGame(gameID) {
     try {
-        if (await gameModel.findOne({gameID})) {
+        if (await gameModel.findOne({ gameID })) {
             return true;
         } else {
             return false;
@@ -131,7 +186,7 @@ async function checkGame(gameID) {
  */
 async function getGame(gameID) {
     try {
-        return await gameModel.findOne({gameID});
+        return await gameModel.findOne({ gameID });
     } catch (error) {
         throw error;
     }
@@ -166,9 +221,10 @@ async function getStatus(gameID) {
 }
 
 /**
- * check if playerCount >= 2 and every player is ready
+ * at least 4 players needed to start the game
+ * check if playerCount >= 4 and every player is ready
  * @param {number} gameID 
- * @returns {boolean} true = count >= 2 and all players ready, false = count < 2 or not all players ready
+ * @returns {boolean} true = count >= 4 and all players ready, false = count < 4 or not all players ready
  */
 async function checkReady(gameID) {
     const game = await getGame(gameID);
@@ -189,6 +245,9 @@ module.exports = {
     checkPlayer: checkPlayer,
     status: getStatus,
     checkReady: checkReady,
-    disconnect: disconnectPlayer
-
+    disconnect: disconnectPlayer,
+    getGame: getGame,
+    start: startGame,
+    lobbyData: getLobbyData,
+    gameData: getGameData
 };
