@@ -33,7 +33,7 @@ async function createGame() {
 /**
  * add a new player to an existing game
  * @param {number} gameID 4-digit number
- * @param {String} playerName name of player
+ * @param {string} playerName name of player
  * @returns {Promise<string>} jwt for further authorization
  */
 async function loginPlayer(gameID, playerName) {
@@ -44,9 +44,9 @@ async function loginPlayer(gameID, playerName) {
 
 /**
  * set ready status of a player
- * @param {Number} gameID 
- * @param {String} playerName 
- * @param {Boolean} readyStatus
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @param {boolean} readyStatus true = ready, false = not ready
  * @returns {Promise<void>}
  */
 async function playerReady(gameID, playerName, readyStatus) {
@@ -74,7 +74,7 @@ function generateGameID() {
 
 /**
  * checks if a game with the given gameID exists
- * @param {number} gameID
+ * @param {number} gameID id of game
  * @returns {Promise<boolean>} does game exist
  */
 async function checkGame(gameID) {
@@ -90,6 +90,11 @@ async function checkGame(gameID) {
     }
 }
 
+/**
+ * fetches game document for gameID in db and returns as object
+ * @param {number} gameID id of game
+ * @returns {Promise<gameModel>} requested game object
+ */
 async function getGame(gameID) {
     try {
         return await gameModel.findOne({gameID});
@@ -98,6 +103,12 @@ async function getGame(gameID) {
     }
 }
 
+/**
+ * checks if playerName already exists in game
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @returns {Promise<boolean>} false = name already exists, true = name is free
+ */
 async function checkPlayer(gameID, playerName) {
     const game = await getGame(gameID);
     const player = game.players.find((player) => player.name === playerName);

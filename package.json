@@ -28,6 +28,7 @@
     "fs": "0.0.1-security",
     "helmet": "^4.4.1",
     "http": "0.0.1-security",
+    "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.11.14",
     "socket.io": "^3.1.0"
   }
