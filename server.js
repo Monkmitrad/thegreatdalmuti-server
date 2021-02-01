@@ -18,12 +18,52 @@ app.use(express.urlencoded({ extended: true }));
 app.use(compression());
 app.use(helmet());
 
+// Rate limiting
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 500 // limit each IP to 500 requests per windowMs
 });
 app.use('/api/*', apiLimiter);
 
+// Catch Postman requests
+app.all('*', async (req, res, next) => {
+  if (req.header('postman-token')) {
+    res.status(403).json({response: 'Forbidden'});
+  } else {
+    next();
+  }
+});
+
+// Rewrite bearer token
+app.all('/api/*', (req, res, next) => {
+  if(req.header('Authorization')) {
+    req.headers['authorization'] = req.header('Authorization').replace('Bearer ', '');
+  }
+  next();
+});
+
+// Catch bad json
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+      console.error(err);
+      return res.status(400).send({response: err.message });
+  }
+  next();
+});
+
+// Routers
+const lobbyRouter = require('./routes/lobbyRouter');
+app.use(lobbyRouter);
+
+app.all('/api/', (req, res) => {
+  res.json({response: 'This API endpoint does not exist'});
+});
+
+app.all('/api/*', (req, res) => {
+  res.json({response: 'This API endpoint does not exist'});
+});
+
+// Create and start http server
 const server = http.Server(app);
 
 server.listen(config.get('port'), config.get('host'), function() {
