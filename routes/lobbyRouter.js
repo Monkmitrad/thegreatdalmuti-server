@@ -4,6 +4,7 @@ const { body, header, validationResult } = require('express-validator');
 
 const config = require('../config');
 const dbHandler = require('../controllers/dbHandler');
+const jwtHandler = require('../controllers/jwtHandler');
 
 const baseURL = config.get('api_baseURL');
 
@@ -47,7 +48,7 @@ router.post(baseURL + 'login', [
         if (err.errors) {
             res.status(400).json({ response: err.errors[0].param + ' not valid' });
         } else {
-            res.status(400).json({ response: err });
+            res.status(400).json({ response: err});
         }
     }
 });
@@ -57,13 +58,24 @@ router.post(baseURL + 'login', [
  */
 router.post(baseURL + 'ready', [
     body('status').exists().isBoolean().trim().escape(),
-    header('authorization').exists().isString().trim()
+    header('authorization').exists().isString().trim().escape()
 ], async (req, res) => {
     try {
         validationResult(req).throw();
 
-        // save status of player
+        const status = req.body.status;
 
+        // save status of player
+        if (jwtHandler.checkToken(req.header('Authorization'))) {
+            const jwt = req.header('Authorization');
+            const decode = jwtHandler.decodeToken(jwt);
+            if (await dbHandler.checkGame(decode.game)) {
+                await dbHandler.ready(decode.game, decode.name, status);
+                res.json({ response: 'Set status to ' + status });
+            }
+        } else {
+            res.status(400).json({ response: 'authorization not valid'});
+        }
     } catch (err) {
         if (err.errors) {
             res.status(400).json({ response: err.errors[0].param + ' not valid' });

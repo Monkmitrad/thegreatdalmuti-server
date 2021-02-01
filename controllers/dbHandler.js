@@ -19,6 +19,8 @@ const gameModel = require('../models/game').gameModel;
 const playerModel = require('../models/player').playerModel;
 const deckModel = require('../models/deck');
 
+const jwtHandler = require('./jwtHandler');
+
 // DB methods
 
 /**
@@ -27,6 +29,13 @@ const deckModel = require('../models/deck');
  */
 async function createGame() {
     const gameID = generateGameID();
+    const newGame = new gameModel({
+        gameID,
+        players: [],
+        gameStatus: false,
+        currentPlayer: ''
+    });
+    await newGame.save();
     return gameID;
 }
 
@@ -38,8 +47,17 @@ async function createGame() {
  */
 async function loginPlayer(gameID, playerName) {
     const game = await getGame(gameID);
-    
-    return 'jwt';
+    const token = jwtHandler.newToken(gameID, playerName);
+    const newPlayer = new playerModel({
+        name: playerName,
+        ready: false,
+        jwt: token,
+        cards: [],
+        rank: ''
+    });
+    game.players.push(newPlayer);
+    await game.save();
+    return token;
 }
 
 /**
@@ -50,7 +68,10 @@ async function loginPlayer(gameID, playerName) {
  * @returns {Promise<void>}
  */
 async function playerReady(gameID, playerName, readyStatus) {
-    
+    const game = await getGame(gameID);
+    const playerIndex = game.players.findIndex((player) => player.name === playerName);
+    game.players[playerIndex].ready = readyStatus;
+    await game.save();
 }
 
 // Additional methods

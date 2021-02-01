@@ -34,6 +34,14 @@ app.all('*', async (req, res, next) => {
   }
 });
 
+// Rewrite bearer token
+app.all('/api/*', (req, res, next) => {
+  if(req.header('Authorization')) {
+    req.headers['authorization'] = req.header('Authorization').replace('Bearer ', '');
+  }
+  next();
+});
+
 // Catch bad json
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
