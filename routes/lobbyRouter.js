@@ -31,15 +31,19 @@ router.post(baseURL + 'login', [
 
         // login user and return jwt
         if (await dbHandler.checkGame(gameID)) {
-            if (await dbHandler.checkPlayer(gameID, playerName)) {
-                const jwt = await dbHandler.login(gameID, playerName);
-                if (jwt) {
-                    res.json({ response: jwt });
+            if (!await dbHandler.status(gameID)) {
+                if (await dbHandler.checkPlayer(gameID, playerName)) {
+                    const jwt = await dbHandler.login(gameID, playerName);
+                    if (jwt) {
+                        res.json({ response: jwt });
+                    } else {
+                        res.status(500).json({ response: 'Internal server error during login' });
+                    }
                 } else {
-                    res.status(500).json({ response: 'Internal server error during login' });
+                    res.status(400).json({ response: 'playerName already taken' });    
                 }
             } else {
-                res.status(400).json({ response: 'playerName already taken' });    
+                res.send(400).json({ response: 'game has already started' });
             }
         } else {
             res.status(400).json({ response: 'gameID not valid' });
@@ -70,8 +74,12 @@ router.post(baseURL + 'ready', [
             const jwt = req.header('Authorization');
             const decode = jwtHandler.decodeToken(jwt);
             if (await dbHandler.checkGame(decode.game)) {
-                await dbHandler.ready(decode.game, decode.name, status);
-                res.json({ response: 'Set status to ' + status });
+                if (!await dbHandler.status(decode.game)) {
+                    await dbHandler.ready(decode.game, decode.name, status);
+                    res.json({ response: 'Set status to ' + status });
+                } else {
+                    res.status(400).json({ response: 'game has already started' });
+                }
             }
         } else {
             res.status(400).json({ response: 'authorization not valid'});

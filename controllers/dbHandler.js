@@ -142,10 +142,21 @@ async function checkPlayer(gameID, playerName) {
     }
 }
 
+/**
+ * returns status of the game
+ * @param {number} gameID 
+ * @returns {boolean} true = game started, false = game not started
+ */
+async function getStatus(gameID) {
+    const game = await getGame(gameID);
+    return game.gameStatus;
+}
+
 module.exports = {
     create: createGame,
     login: loginPlayer,
     ready: playerReady,
     checkGame: checkGame,
-    checkPlayer: checkPlayer
+    checkPlayer: checkPlayer,
+    status: getStatus
 };
