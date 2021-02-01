@@ -74,6 +74,19 @@ async function playerReady(gameID, playerName, readyStatus) {
     await game.save();
 }
 
+/**
+ * disconnects player from a game
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @returns {Promise<void>}
+ */
+async function disconnectPlayer(gameID, playerName) {
+    const game = await getGame(gameID);
+    const playerIndex = game.players.findIndex((player) => player.name === playerName);
+    game.players.splice(playerIndex, 1);
+    await game.save();
+}
+
 // Additional methods
 
 /**
@@ -152,11 +165,30 @@ async function getStatus(gameID) {
     return game.gameStatus;
 }
 
+/**
+ * check if playerCount >= 2 and every player is ready
+ * @param {number} gameID 
+ * @returns {boolean} true = count >= 2 and all players ready, false = count < 2 or not all players ready
+ */
+async function checkReady(gameID) {
+    const game = await getGame(gameID);
+    if (game.players.length >= 2) {
+        return game.players.every((element) => {
+            return element.ready;
+        });
+    } else {
+        return false;
+    }
+}
+
 module.exports = {
     create: createGame,
     login: loginPlayer,
     ready: playerReady,
     checkGame: checkGame,
     checkPlayer: checkPlayer,
-    status: getStatus
+    status: getStatus,
+    checkReady: checkReady,
+    disconnect: disconnectPlayer
+
 };

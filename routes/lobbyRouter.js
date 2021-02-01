@@ -77,9 +77,46 @@ router.post(baseURL + 'ready', [
                 if (!await dbHandler.status(decode.game)) {
                     await dbHandler.ready(decode.game, decode.name, status);
                     res.json({ response: 'Set status to ' + status });
+                    if (await dbHandler.checkReady(decode.gameID)) {
+                        console.log("Start game");
+                    }
                 } else {
                     res.status(400).json({ response: 'game has already started' });
                 }
+            } else {
+                res.status(400).json({ response: 'gameID not valid' });
+            }
+        } else {
+            res.status(400).json({ response: 'authorization not valid'});
+        }
+    } catch (err) {
+        if (err.errors) {
+            res.status(400).json({ response: err.errors[0].param + ' not valid' });
+        } else {
+            res.status(400).json({ response: err });
+        }
+    }
+});
+
+/**
+ * disconnect player from game
+ */
+router.post(baseURL + 'disconnect', [
+    header('authorization').exists().isString().trim().escape()
+], async (req, res) => {
+    try {
+        validationResult(req).throw();
+
+        // disconnect player from game
+        if (jwtHandler.checkToken(req.header('Authorization'))) {
+            const jwt = req.header('Authorization');
+            const decode = jwtHandler.decodeToken(jwt);
+
+            if (await dbHandler.checkGame(decode.game)) {
+                await dbHandler.disconnect(decode.game, decode.name);
+                res.json({ response: 'Disconnected' });
+            } else {
+                res.status(400).json({ response: 'gameID not valid' });
             }
         } else {
             res.status(400).json({ response: 'authorization not valid'});
