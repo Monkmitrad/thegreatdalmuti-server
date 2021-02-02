@@ -69,7 +69,7 @@ async function loginPlayer(gameID, playerName) {
  */
 async function playerReady(gameID, playerName, readyStatus) {
     const game = await getGame(gameID);
-    const playerIndex = game.players.findIndex((player) => player.name === playerName);
+    const playerIndex = game.players.findIndex(_player => _player.name === playerName);
     game.players[playerIndex].ready = readyStatus;
     await game.save();
 }
@@ -82,7 +82,7 @@ async function playerReady(gameID, playerName, readyStatus) {
  */
 async function disconnectPlayer(gameID, playerName) {
     const game = await getGame(gameID);
-    const playerIndex = game.players.findIndex((player) => player.name === playerName);
+    const playerIndex = game.players.findIndex(_player => _player.name === playerName);
     game.players.splice(playerIndex, 1);
     await game.save();
 }
@@ -200,7 +200,7 @@ async function getGame(gameID) {
  */
 async function checkPlayer(gameID, playerName) {
     const game = await getGame(gameID);
-    const player = game.players.find((player) => player.name === playerName);
+    const player = game.players.find(_player => _player.name === playerName);
     if (player) {
         // name already in use
         return false;
@@ -213,7 +213,7 @@ async function checkPlayer(gameID, playerName) {
 /**
  * returns status of the game
  * @param {number} gameID 
- * @returns {boolean} true = game started, false = game not started
+ * @returns {Promise<boolean>} true = game started, false = game not started
  */
 async function getStatus(gameID) {
     const game = await getGame(gameID);
@@ -237,6 +237,48 @@ async function checkReady(gameID) {
     }
 }
 
+/**
+ * checks if play is valid
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @param {number[]} cards array with played cards
+ * @returns {Promise<boolean>} 
+ */
+async function checkCards(gameID, playerName, cards) {
+    const game = await getGame(gameID);
+    const player = game.players.find(_player => _player.name === playerName);
+    let searchArray = [...player.cards];
+    
+    // check if all played cards exists in players cards
+    // true = all played cards in players cards, false = not all played cards in players cards
+    const playedCardsExist = cards.every(card => {
+        if (searchArray.includes(card)) {
+            const index = searchArray.indexOf(card);
+            searchArray.splice(index, 1);
+            return true;
+        } else {
+            return false;
+        }
+    });
+
+    // check if all cards are the same or contain a jester
+    // true = all cards identical and/or combined with jester, false = not all cards are identical
+    searchArray = [cards];
+    if (searchArray.includes(13)) {
+        // jester is played
+        // splice jester card and check for another jester
+        searchArray.splice(searchArray.indexOf(13));
+        if (searchArray.includes(13)) {
+            // another jester is played
+            // splice jester card and check for another jester
+            searchArray.splice(searchArray.indexOf(13));
+        }
+    }
+    const allCardsIdentical = searchArray.every(card => card = searchArray[0]);
+
+    return playedCardsExist && allCardsIdentical;
+}
+
 module.exports = {
     create: createGame,
     login: loginPlayer,
@@ -249,5 +291,6 @@ module.exports = {
     getGame: getGame,
     start: startGame,
     lobbyData: getLobbyData,
-    gameData: getGameData
+    gameData: getGameData,
+    checkCards: checkCards
 };

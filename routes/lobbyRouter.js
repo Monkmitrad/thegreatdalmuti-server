@@ -81,7 +81,7 @@ router.post(baseURL + 'ready', [
                     if (await dbHandler.checkReady(decode.game)) {
                         console.log("Start game");
                         await dbHandler.start(decode.game);
-                        await startGame(decode.game);
+                        await firstRound(decode.game);
                     }
                 } else {
                     res.status(400).json({ response: 'game has already started' });
