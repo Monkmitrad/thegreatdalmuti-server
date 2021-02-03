@@ -4,6 +4,7 @@ const { body, header, validationResult } = require('express-validator');
 
 const config = require('../config');
 const dbHandler = require('../controllers/dbHandler');
+const gameHandler = require('../controllers/gameHandler');
 const jwtHandler = require('../controllers/jwtHandler');
 
 const baseURL = config.get('api_baseURL');
@@ -54,13 +55,28 @@ router.post(baseURL + 'play', [
     try {
         validationResult(req).throw();
 
+        const cards = req.body.cards
+
         // user plays cards
         if (jwtHandler.checkToken(req.header('Authorization'))) {
             const jwt = req.header('Authorization');
             const decode = jwtHandler.decodeToken(jwt);
             if (await dbHandler.checkGame(decode.game)) {
                 if (await dbHandler.status(decode.game)) {
-                    await dbHandler
+                    if (await dbHandler.checkCurrent(decode.game, decode.name)) {
+                        if (await dbHandler.checkCards(decode.game, decode.name, cards)) {
+                            // play is valid -> pass to gameHandler
+                            await gameHandler.play(gameID, cards);
+                            // remove played cards from player
+                            await dbHandler.removeCards(decode.game, decode.name, cards);
+                            // set next player
+                            await gameHandler.next(decode.game);
+                        } else {
+                            res.status(400).json({ response: 'cards not valid' });
+                        }
+                    } else {
+                        res.status(400).json({ response: 'not your turn' });
+                    }                    
                 } else {
                     res.status(400).json({ response: 'game has not started' });
                 }

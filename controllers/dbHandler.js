@@ -53,7 +53,8 @@ async function loginPlayer(gameID, playerName) {
         ready: false,
         jwt: token,
         cards: [],
-        rank: ''
+        rank: '',
+        points: 0
     });
     game.players.push(newPlayer);
     await game.save();
@@ -111,6 +112,7 @@ async function getLobbyData(gameID, playerName) {
         delete player.cards;
         delete player.jwt;
         delete player.rank;
+        delete player.points;
     });
     delete game._id;
     delete game.__v;
@@ -140,6 +142,24 @@ async function getGameData(gameID, playerName) {
     delete game._id;
     delete game.__v;
     return game;
+}
+
+/**
+ * removes played cards from player cards
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @param {number[]} cards played cards
+ */
+async function removeCards(gameID, playerName, cards) {
+    const game = await getGame(gameID);
+    const player = game.players.find(_player => _player.name === playerName);
+    cards.forEach(card => {
+        const index = player.cards.indexOf(card);
+        if (index > -1) {
+            player.cards.splice(index, 1);
+        }
+    });
+    await game.save();
 }
 
 // Additional methods
@@ -279,6 +299,11 @@ async function checkCards(gameID, playerName, cards) {
     return playedCardsExist && allCardsIdentical;
 }
 
+async function checkCurrentPlayer(gameID, playerName) {
+    const game = await getGame(gameID);
+    return game.currentPlayer === playerName;
+}
+
 module.exports = {
     create: createGame,
     login: loginPlayer,
@@ -292,5 +317,7 @@ module.exports = {
     start: startGame,
     lobbyData: getLobbyData,
     gameData: getGameData,
-    checkCards: checkCards
+    checkCards: checkCards,
+    checkCurrent: checkCurrentPlayer,
+    removeCards: removeCards
 };
