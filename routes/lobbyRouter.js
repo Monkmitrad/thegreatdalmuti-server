@@ -5,6 +5,7 @@ const { body, header, validationResult } = require('express-validator');
 const config = require('../config');
 const dbHandler = require('../controllers/dbHandler');
 const jwtHandler = require('../controllers/jwtHandler');
+const startGame = require('../controllers/gameHandler').startGame;
 
 const baseURL = config.get('api_baseURL');
 
@@ -77,8 +78,10 @@ router.post(baseURL + 'ready', [
                 if (!await dbHandler.status(decode.game)) {
                     await dbHandler.ready(decode.game, decode.name, status);
                     res.json({ response: 'Set status to ' + status });
-                    if (await dbHandler.checkReady(decode.gameID)) {
+                    if (await dbHandler.checkReady(decode.game)) {
                         console.log("Start game");
+                        await dbHandler.start(decode.game);
+                        await firstRound(decode.game);
                     }
                 } else {
                     res.status(400).json({ response: 'game has already started' });

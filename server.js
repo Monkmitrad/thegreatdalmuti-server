@@ -53,7 +53,10 @@ app.use((err, req, res, next) => {
 
 // Routers
 const lobbyRouter = require('./routes/lobbyRouter');
+const gameRouter = require('./routes/gameRouter');
+
 app.use(lobbyRouter);
+app.use(gameRouter);
 
 app.all('/api/', (req, res) => {
   res.json({response: 'This API endpoint does not exist'});

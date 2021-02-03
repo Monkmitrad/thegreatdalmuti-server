@@ -2,15 +2,15 @@ const mongoose = require('mongoose');
 const config = require('../config');
 
 mongoose.connect(`mongodb://${config.get("db_host")}:${config.get("db_port")}/${config.get("db_name")}`, {
-	useNewUrlParser: true,
-	useUnifiedTopology: true,
-	useFindAndModify: false,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useFindAndModify: false,
 });
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function () {
-	console.log('Connection to MongoDB established');
+    console.log('Connection to MongoDB established');
 });
 
 // Models
@@ -53,7 +53,8 @@ async function loginPlayer(gameID, playerName) {
         ready: false,
         jwt: token,
         cards: [],
-        rank: ''
+        rank: '',
+        points: 0
     });
     game.players.push(newPlayer);
     await game.save();
@@ -69,7 +70,7 @@ async function loginPlayer(gameID, playerName) {
  */
 async function playerReady(gameID, playerName, readyStatus) {
     const game = await getGame(gameID);
-    const playerIndex = game.players.findIndex((player) => player.name === playerName);
+    const playerIndex = game.players.findIndex(_player => _player.name === playerName);
     game.players[playerIndex].ready = readyStatus;
     await game.save();
 }
@@ -82,8 +83,82 @@ async function playerReady(gameID, playerName, readyStatus) {
  */
 async function disconnectPlayer(gameID, playerName) {
     const game = await getGame(gameID);
-    const playerIndex = game.players.findIndex((player) => player.name === playerName);
+    const playerIndex = game.players.findIndex(_player => _player.name === playerName);
     game.players.splice(playerIndex, 1);
+    await game.save();
+}
+
+/**
+ * starts game
+ * @param {number} gameID id of gamg
+ * @returns {Promise<void>}
+ */
+async function startGame(gameID) {
+    const game = await getGame(gameID);
+    game.gameStatus = true;
+    await game.save();
+}
+
+/**
+ * fetches and returns game data for specific
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @returns {Promise<gameModel>} gameData
+ */
+async function getLobbyData(gameID, playerName) {
+    const game = (await getGame(gameID)).toObject();
+    game.players.forEach(player => {
+        delete player._id;
+        delete player.cards;
+        delete player.jwt;
+        delete player.rank;
+        delete player.points;
+    });
+    delete game._id;
+    delete game.__v;
+    return game;
+}
+
+/**
+ * fetches and returns game data for specific
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @returns {Promise<gameModel>} gameData
+ */
+async function getGameData(gameID, playerName) {
+    const game = (await getGame(gameID)).toObject();
+    game.players.forEach(player => {
+        if (player.name === playerName) {
+            delete player._id;
+            delete player.ready;
+            delete player.jwt;
+        } else {
+            delete player._id;
+            delete player.ready;
+            delete player.jwt;
+            player.cards = new Array(player.cards.length);
+        }
+    });
+    delete game._id;
+    delete game.__v;
+    return game;
+}
+
+/**
+ * removes played cards from player cards
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @param {number[]} cards played cards
+ */
+async function removeCards(gameID, playerName, cards) {
+    const game = await getGame(gameID);
+    const player = game.players.find(_player => _player.name === playerName);
+    cards.forEach(card => {
+        const index = player.cards.indexOf(card);
+        if (index > -1) {
+            player.cards.splice(index, 1);
+        }
+    });
     await game.save();
 }
 
@@ -94,10 +169,10 @@ async function disconnectPlayer(gameID, playerName) {
  * @returns {number} generated 4-digit number
  */
 function generateGameID() {
-	const id = (Math.floor(Math.random() * 10000) + 10000)
-		.toString()
+    const id = (Math.floor(Math.random() * 10000) + 10000)
+        .toString()
         .substring(1);
-    if ((Math.log(id) * Math.LOG10E + 1 | 0 ) === 4) {
+    if ((Math.log(id) * Math.LOG10E + 1 | 0) === 4) {
         // 4 digit number
         return Number(id);
     } else {
@@ -113,7 +188,7 @@ function generateGameID() {
  */
 async function checkGame(gameID) {
     try {
-        if (await gameModel.findOne({gameID})) {
+        if (await gameModel.findOne({ gameID })) {
             return true;
         } else {
             return false;
@@ -131,7 +206,7 @@ async function checkGame(gameID) {
  */
 async function getGame(gameID) {
     try {
-        return await gameModel.findOne({gameID});
+        return await gameModel.findOne({ gameID });
     } catch (error) {
         throw error;
     }
@@ -145,7 +220,7 @@ async function getGame(gameID) {
  */
 async function checkPlayer(gameID, playerName) {
     const game = await getGame(gameID);
-    const player = game.players.find((player) => player.name === playerName);
+    const player = game.players.find(_player => _player.name === playerName);
     if (player) {
         // name already in use
         return false;
@@ -158,7 +233,7 @@ async function checkPlayer(gameID, playerName) {
 /**
  * returns status of the game
  * @param {number} gameID 
- * @returns {boolean} true = game started, false = game not started
+ * @returns {Promise<boolean>} true = game started, false = game not started
  */
 async function getStatus(gameID) {
     const game = await getGame(gameID);
@@ -166,9 +241,10 @@ async function getStatus(gameID) {
 }
 
 /**
- * check if playerCount >= 2 and every player is ready
+ * at least 4 players needed to start the game
+ * check if playerCount >= 4 and every player is ready
  * @param {number} gameID 
- * @returns {boolean} true = count >= 2 and all players ready, false = count < 2 or not all players ready
+ * @returns {boolean} true = count >= 4 and all players ready, false = count < 4 or not all players ready
  */
 async function checkReady(gameID) {
     const game = await getGame(gameID);
@@ -181,6 +257,53 @@ async function checkReady(gameID) {
     }
 }
 
+/**
+ * checks if play is valid
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ * @param {number[]} cards array with played cards
+ * @returns {Promise<boolean>} 
+ */
+async function checkCards(gameID, playerName, cards) {
+    const game = await getGame(gameID);
+    const player = game.players.find(_player => _player.name === playerName);
+    let searchArray = [...player.cards];
+    
+    // check if all played cards exists in players cards
+    // true = all played cards in players cards, false = not all played cards in players cards
+    const playedCardsExist = cards.every(card => {
+        if (searchArray.includes(card)) {
+            const index = searchArray.indexOf(card);
+            searchArray.splice(index, 1);
+            return true;
+        } else {
+            return false;
+        }
+    });
+
+    // check if all cards are the same or contain a jester
+    // true = all cards identical and/or combined with jester, false = not all cards are identical
+    searchArray = [cards];
+    if (searchArray.includes(13)) {
+        // jester is played
+        // splice jester card and check for another jester
+        searchArray.splice(searchArray.indexOf(13));
+        if (searchArray.includes(13)) {
+            // another jester is played
+            // splice jester card and check for another jester
+            searchArray.splice(searchArray.indexOf(13));
+        }
+    }
+    const allCardsIdentical = searchArray.every(card => card = searchArray[0]);
+
+    return playedCardsExist && allCardsIdentical;
+}
+
+async function checkCurrentPlayer(gameID, playerName) {
+    const game = await getGame(gameID);
+    return game.currentPlayer === playerName;
+}
+
 module.exports = {
     create: createGame,
     login: loginPlayer,
@@ -189,6 +312,12 @@ module.exports = {
     checkPlayer: checkPlayer,
     status: getStatus,
     checkReady: checkReady,
-    disconnect: disconnectPlayer
-
+    disconnect: disconnectPlayer,
+    getGame: getGame,
+    start: startGame,
+    lobbyData: getLobbyData,
+    gameData: getGameData,
+    checkCards: checkCards,
+    checkCurrent: checkCurrentPlayer,
+    removeCards: removeCards
 };

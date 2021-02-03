@@ -5,7 +5,8 @@ const playerScheme = new mongoose.Schema({
     ready: Boolean,
     jwt: String,
     cards: Array,
-    rank: String
+    rank: Number,
+    points: Number
 });
 
 const playerModel = new mongoose.model('Player', playerScheme, 'players');
