@@ -350,6 +350,19 @@ async function checkCurrentPlayer(gameID, playerName) {
     return game.currentPlayer === playerName;
 }
 
+/**
+ * checks if player remaining
+ * @param {number} gameID id of game
+ */
+async function checkRemainingPlayers(gameID) {
+    const game = await getGame(gameID);
+    if (game.remainingPlayers.length) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
 module.exports = {
     create: createGame,
     login: loginPlayer,
@@ -366,5 +379,6 @@ module.exports = {
     checkCards: checkCards,
     checkCurrent: checkCurrentPlayer,
     removeCards: removeCards,
-    clear: clearStack
+    clear: clearStack,
+    remaining: checkRemainingPlayers
 };

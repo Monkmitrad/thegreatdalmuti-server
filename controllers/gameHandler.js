@@ -47,7 +47,10 @@ function createDeck() {
     return shuffle(deck);
 }
 
-
+/**
+ * 
+ * @param {*} gameID 
+ */
 async function startFirstRound(gameID) {
     const game = await dbHandler.getGame(gameID);
     const playerCount = game.players.length;
@@ -145,9 +148,27 @@ async function setWinnerPoints(gameID, playerName) {
     const game = await getGame(gameID);
     const player = game.players.find(_player => _player.name = playerName);
     player.points += game.remainingPlayers.length;
+    
+    // TODO: difference between current rank and new rank (maybe clear ranks after cards have been swapped at the beginning of the round)
+
     player.rank = game.players - game.remainingPlayers;
     await game.save();
 
+}
+
+async function nextRound(gameID) {
+    const game = await getGame(gameID);
+
+    game.remainingPlayers = new Array();
+    const sortArray = [...game.players];
+    sortArray.sort(function (a, b) { return a.rank - b.rank });
+    sortArray.forEach(player => game.remainingPlayers.push(player.name));
+
+    game.currentPlayer = game.remainingPlayers[0];
+
+    console.log('Next rounds beginner: ', game.currentPlayer);
+    await game.save();
+    await startGame(gameID);
 }
 
 module.exports = {
@@ -156,5 +177,6 @@ module.exports = {
     firstRound: startFirstRound,
     play: playCards,
     next: nextTurn,
-    points: setWinnerPoints
+    points: setWinnerPoints,
+    nextRound: nextRound
 };

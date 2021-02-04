@@ -70,11 +70,18 @@ router.post(baseURL + 'play', [
                             // remove played cards from player
                             const result = await dbHandler.removeCards(decode.game, decode.name, cards);
                             if (result) {
+                                res.json({ response: 'played ' + cards.toString() });
                                 await gameHandler.points(decode.game, decode.name);
+                                // check if players remaining
+                                if (await dbHandler.remaining(decode.game)) {
+                                    // all players finished, start new round
+                                    await gameHandler.nextRound(decode.game);
+                                }
+                            } else {
+                                // set next player
+                                await gameHandler.next(decode.game);
+                                res.json({ response: 'played ' + cards.toString() });
                             }
-                            // set next player
-                            await gameHandler.next(decode.game);
-                            res.json({ response: 'played ' + cards.toString() });
                         } else {
                             res.status(400).json({ response: 'cards not valid' });
                         }
