@@ -170,6 +170,8 @@ async function removeCards(gameID, playerName, cards) {
     // check if cards are left
     if (player.cards.length === 0) {
         // player has finished
+        const index = game.remainingPlayers.indexOf(playerName);
+        game.remainingPlayers.splice(index, 1);
         await game.save();
         return true;
     } else {

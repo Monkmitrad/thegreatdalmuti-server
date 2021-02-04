@@ -134,6 +134,9 @@ router.post(baseURL + 'disconnect', [
     }
 });
 
+/**
+ * get lobbyData
+ */
 router.get(baseURL + 'lobbyData' , [
     header('authorization').exists().isString().trim().escape()
 ], async (req, res) => {
@@ -166,4 +169,5 @@ router.get(baseURL + 'lobbyData' , [
         }
     }
 });
+
 module.exports = router;

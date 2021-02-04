@@ -70,9 +70,6 @@ router.post(baseURL + 'play', [
                             // remove played cards from player
                             const result = await dbHandler.removeCards(decode.game, decode.name, cards);
                             if (result) {
-                                const index = game.remainingPlayers.indexOf(decode.name);
-                                game.remainingPlayers.splice(index, 1);
-                                await game.save();
                                 await gameHandler.points(decode.game, decode.name);
                             }
                             // set next player
