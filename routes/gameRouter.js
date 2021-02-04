@@ -18,7 +18,7 @@ router.get(baseURL + 'data', [
     try {
         validationResult(req).throw();
 
-        // get data for user
+        // get gameData for user
         if (jwtHandler.checkToken(req.header('Authorization'))) {
             const jwt = req.header('Authorization');
             const decode = jwtHandler.decodeToken(jwt);
@@ -33,7 +33,7 @@ router.get(baseURL + 'data', [
                 res.status(400).json({ response: 'gameID not valid' });
             }
         } else {
-            res.status(400).json({ response: 'authorization not valid'});
+            res.status(400).json({ response: 'authorization not valid' });
         }
     } catch (err) {
         if (err.errors) {
@@ -49,7 +49,7 @@ router.get(baseURL + 'data', [
  * play cards
  */
 router.post(baseURL + 'play', [
-    body('cards').exists().isArray().trim().escape(),
+    body('cards').exists().isArray(),
     header('authorization').exists().isString().trim().escape()
 ], async (req, res) => {
     try {
@@ -66,17 +66,24 @@ router.post(baseURL + 'play', [
                     if (await dbHandler.checkCurrent(decode.game, decode.name)) {
                         if (await dbHandler.checkCards(decode.game, decode.name, cards)) {
                             // play is valid -> pass to gameHandler
-                            await gameHandler.play(gameID, cards);
+                            await gameHandler.play(decode.game, cards);
                             // remove played cards from player
-                            await dbHandler.removeCards(decode.game, decode.name, cards);
+                            const result = await dbHandler.removeCards(decode.game, decode.name, cards);
+                            if (result) {
+                                const index = game.remainingPlayers.indexOf(decode.name);
+                                game.remainingPlayers.splice(index, 1);
+                                await game.save();
+                                await gameHandler.points(decode.game, decode.name);
+                            }
                             // set next player
                             await gameHandler.next(decode.game);
+                            res.json({ response: 'played ' + cards.toString() });
                         } else {
                             res.status(400).json({ response: 'cards not valid' });
                         }
                     } else {
                         res.status(400).json({ response: 'not your turn' });
-                    }                    
+                    }
                 } else {
                     res.status(400).json({ response: 'game has not started' });
                 }
@@ -84,7 +91,48 @@ router.post(baseURL + 'play', [
                 res.status(400).json({ response: 'gameID not valid' });
             }
         } else {
-            res.status(400).json({ response: 'authorization not valid'});
+            res.status(400).json({ response: 'authorization not valid' });
+        }
+    } catch (err) {
+        if (err.errors) {
+            res.status(400).json({ response: err.errors[0].param + ' not valid' });
+        } else {
+            console.log(err);
+            res.status(400).json({ response: err });
+        }
+    }
+});
+
+/**
+ * pass turn and don't play card
+ */
+router.post(baseURL + 'pass', [
+    header('authorization').exists().isString().trim().escape()
+], async (req, res) => {
+    try {
+        validationResult(req).throw();
+
+        // user passes turn
+        if (jwtHandler.checkToken(req.header('Authorization'))) {
+            const jwt = req.header('Authorization');
+            const decode = jwtHandler.decodeToken(jwt);
+
+            if (await dbHandler.checkGame(decode.game)) {
+                if (await dbHandler.status(decode.game)) {
+                    if (await dbHandler.checkCurrent(decode.game, decode.name)) {
+                        await gameHandler.next(decode.game);
+                        res.json({ response: 'passed your turn' });
+                    } else {
+                        res.status(400).json({ response: 'not your turn' });
+                    }
+                } else {
+                    res.status(400).json({ response: 'game has not started' });
+                }
+            } else {
+                res.status(400).json({ response: 'gameID not valid' });
+            }
+        } else {
+            res.status(400).json({ response: 'authorization not valid' });
         }
     } catch (err) {
         if (err.errors) {

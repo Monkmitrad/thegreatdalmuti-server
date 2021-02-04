@@ -7,7 +7,9 @@ const gameScheme = new mongoose.Schema({
     players: [playerScheme],
     gameStatus: Boolean,
     currentPlayer: String,
-    cardStack: Array
+    cardStack: Array,
+    lastPlayed: String,
+    remainingPlayers: Array
 });
 
 const gameModel = new mongoose.model('Game', gameScheme, 'games');

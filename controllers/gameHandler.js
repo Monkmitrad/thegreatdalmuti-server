@@ -1,3 +1,4 @@
+const { getGame } = require('./dbHandler');
 const dbHandler = require('./dbHandler');
 
 /**
@@ -53,26 +54,26 @@ async function startFirstRound(gameID) {
 
     // randomly assign ranks to players
     let ranks = [];
-    for (let i= 1; i <= playerCount; i++) {
+    for (let i = 1; i <= playerCount; i++) {
         ranks.push(i);
     }
-    /*
-    ranks.push('Greater Dalmuti', 'Lesser Dalmuti', 'Lesser Peon', 'Greater Peon');
-    for (let i = 0; i < playerCount - 4; i++) {
-        ranks.push('Merchant' + i);
-    }
-    */
     ranks = shuffle(ranks);
 
     // save ranks to game
-
     for (let i = 0; i < playerCount; i++) {
         game.players[i].rank = ranks[i];
+
     }
-    game.currentPlayer = game.players.find(_player => _player.rank === 1).name;
+
+    game.remainingPlayers = new Array();
+    const sortArray = [...game.players];
+    sortArray.sort(function (a, b) { return a.rank - b.rank });
+    sortArray.forEach(player => game.remainingPlayers.push(player.name));
+
+    game.currentPlayer = game.remainingPlayers[0];
+    console.log(game.currentPlayer);
     await game.save();
     await startGame(gameID);
-    console.log(game.players);
 }
 
 /**
@@ -98,50 +99,55 @@ function shuffle(array) {
  */
 async function playCards(gameID, cards) {
     const game = await dbHandler.getGame(gameID);
-    if (game.cardStack === []) {
+    if (game.cardStack.length === 0) {
         // first play
-        game.cardStack = [...cards];
+        game.cardStack.push([...cards]);
     } else {
-        const currentNumber = game.cardStack.slice(-1).pop().find(number => number !== 13);
-        if (checkCardRank(currentNumber, cards)) {
-            if (cards.length === game.cardStack.slice(-1).pop().length) {
-                // everything is valid
-                game.cardStack.push(cards);
-            }
-        } 
+        game.cardStack.push([...cards]);
+        game.lastPlayed = game.currentPlayer;
     }
     await game.save();
-}
-
-/**
- * checks if played cards contain cards with a rank equal or higher than the current number
- * @param {number} currentNumber last played number
- * @param {number[]} cards played cards
- * @returns {boolean}
- */
-function checkCardRank(currentNumber, cards) {
-    cards.every(card => {
-        if (card >= currentNumber && card !== 13) {
-            return false;
-        } else {
-            return true;
-        }
-    });
 }
 
 /**
  * sets currentPlayer of game to next player
  * @param {number} gameID id of game
+ * @returns {Promise<void>}
  */
 async function nextTurn(gameID) {
     const game = await dbHandler.getGame(gameID);
-    const player = game.players.find(_player => _player.name === game.currentPlayer);
-    if (player.rank === game.players.length) {
-        game.currentPlayer = game.players.find(_player => _player.rank === 1).name;
+
+    const index = game.remainingPlayers.indexOf(game.currentPlayer);
+    let nextPlayer;
+    if (index === game.remainingPlayers.length - 1) {
+        nextPlayer = game.remainingPlayers[0];
     } else {
-        game.currentPlayer = game.players.find(_player => _player.rank === player.rank + 1).name;
+        nextPlayer = game.remainingPlayers[index + 1];
     }
+
+    if (nextPlayer === game.lastPlayed) {
+        // all players passed their turn
+        game.currentPlayer = game.lastPlayed;
+        await game.save();
+        await dbHandler.clear(gameID);
+    } else {
+        game.currentPlayer = nextPlayer;
+        await game.save();
+    }
+}
+
+/**
+ * adds corresponding points and rank for player
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ */
+async function setWinnerPoints(gameID, playerName) {
+    const game = await getGame(gameID);
+    const player = game.players.find(_player => _player.name = playerName);
+    player.points += game.remainingPlayers.length;
+    player.rank = game.players - game.remainingPlayers;
     await game.save();
+
 }
 
 module.exports = {
@@ -149,5 +155,6 @@ module.exports = {
     startGame: startGame,
     firstRound: startFirstRound,
     play: playCards,
-    next: nextTurn
+    next: nextTurn,
+    points: setWinnerPoints
 };

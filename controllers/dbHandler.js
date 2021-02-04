@@ -33,7 +33,10 @@ async function createGame() {
         gameID,
         players: [],
         gameStatus: false,
-        currentPlayer: ''
+        currentPlayer: '',
+        cardStack: [],
+        lastPlayed: '',
+        remainingPlayers: []
     });
     await newGame.save();
     return gameID;
@@ -54,7 +57,7 @@ async function loginPlayer(gameID, playerName) {
         jwt: token,
         cards: [],
         rank: '',
-        points: 0
+        points: 0,
     });
     game.players.push(newPlayer);
     await game.save();
@@ -105,7 +108,7 @@ async function startGame(gameID) {
  * @param {string} playerName name of player
  * @returns {Promise<gameModel>} gameData
  */
-async function getLobbyData(gameID, playerName) {
+async function getLobbyData(gameID) {
     const game = (await getGame(gameID)).toObject();
     game.players.forEach(player => {
         delete player._id;
@@ -116,6 +119,10 @@ async function getLobbyData(gameID, playerName) {
     });
     delete game._id;
     delete game.__v;
+    delete game.cardStack;
+    delete game.remainingPlayers;
+    delete game.lastPlayed;
+
     return game;
 }
 
@@ -149,6 +156,7 @@ async function getGameData(gameID, playerName) {
  * @param {number} gameID id of game
  * @param {string} playerName name of player
  * @param {number[]} cards played cards
+ * @returns {Promise<boolean>} true = player has finished, false = player has cards left
  */
 async function removeCards(gameID, playerName, cards) {
     const game = await getGame(gameID);
@@ -159,7 +167,25 @@ async function removeCards(gameID, playerName, cards) {
             player.cards.splice(index, 1);
         }
     });
-    await game.save();
+    // check if cards are left
+    if (player.cards.length === 0) {
+        // player has finished
+        await game.save();
+        return true;
+    } else {
+        await game.save();
+        return false;
+    }
+}
+
+/**
+ * clears cardStack of game
+ * @param {number} gameID id of game
+ * @returns {Promise<void>}
+ */
+async function clearStack(gameID) {
+    const game = await getGame(gameID);
+    game.cardStack = [];
 }
 
 // Additional methods
@@ -248,7 +274,7 @@ async function getStatus(gameID) {
  */
 async function checkReady(gameID) {
     const game = await getGame(gameID);
-    if (game.players.length >= 2) {
+    if (game.players.length >= 4) {
         return game.players.every((element) => {
             return element.ready;
         });
@@ -294,11 +320,29 @@ async function checkCards(gameID, playerName, cards) {
             searchArray.splice(searchArray.indexOf(13));
         }
     }
-    const allCardsIdentical = searchArray.every(card => card = searchArray[0]);
+    const allCardsIdentical = searchArray.every(card => card === searchArray[0]);
 
-    return playedCardsExist && allCardsIdentical;
+    // check if number of cards is identical to number of cards from last play
+    const validAmount = cards.length === game.cardStack.slice(-1).pop().length;
+
+    // check if rank of played cards are lower than current rank
+    const currentNumber = game.cardStack.slice(-1).pop().find(number => number !== 13);
+    const rankValid = cards.every(card => {
+        if (card >= currentNumber && card !== 13) {
+            return false;
+        } else {
+            return true;
+        }
+    });
+
+    return playedCardsExist && allCardsIdentical && validAmount && rankValid;
 }
 
+/**
+ * checks if player is currentPlayer
+ * @param {number} gameID id of game
+ * @param {string} playerName name of player
+ */
 async function checkCurrentPlayer(gameID, playerName) {
     const game = await getGame(gameID);
     return game.currentPlayer === playerName;
@@ -319,5 +363,6 @@ module.exports = {
     gameData: getGameData,
     checkCards: checkCards,
     checkCurrent: checkCurrentPlayer,
-    removeCards: removeCards
+    removeCards: removeCards,
+    clear: clearStack
 };
