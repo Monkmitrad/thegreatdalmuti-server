@@ -9,7 +9,8 @@ const gameScheme = new mongoose.Schema({
     currentPlayer: String,
     cardStack: Array,
     lastPlayed: String,
-    remainingPlayers: Array
+    remainingPlayers: Array,
+    cardsSwitched: Boolean
 });
 
 const gameModel = new mongoose.model('Game', gameScheme, 'games');

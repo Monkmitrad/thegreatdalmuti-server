@@ -63,7 +63,7 @@ router.post(baseURL + 'login', [
  */
 router.post(baseURL + 'ready', [
     body('status').exists().isBoolean().trim().escape(),
-    header('authorization').exists().isString().trim().escape()
+    header('authorization').exists().notEmpty().isString().trim().escape()
 ], async (req, res) => {
     try {
         validationResult(req).throw();
@@ -148,7 +148,7 @@ router.get(baseURL + 'lobbyData' , [
             const jwt = req.header('Authorization');
             const decode = jwtHandler.decodeToken(jwt);
             if (await dbHandler.checkGame(decode.game)) {
-                if (await dbHandler.status(decode.game)) {
+                if (!await dbHandler.status(decode.game)) {
                     const data = await dbHandler.lobbyData(decode.game);
                     res.json({ response: data });
                 } else {

@@ -72,3 +72,19 @@ const server = http.Server(app);
 server.listen(config.get('port'), config.get('host'), function() {
   console.log(`Running on http://${config.get('host')}:${config.get('port')}`);
 });
+
+// Serve static files
+app.get('*.*', express.static(config.get('app_folder'), {maxAge: '1y'}));
+
+app.get('*', (req, res) => {
+  try {
+      if (fs.existsSync(config.get('app_folder'))) {
+              res.status(200).sendFile(`/`, {root: config.get('app_folder')});
+      } else {
+              res.status(404).send('404');
+      }
+  } catch (error) {
+      console.log(error);
+      res.status(500).send();
+  }
+});

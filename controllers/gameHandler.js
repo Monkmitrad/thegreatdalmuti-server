@@ -1,4 +1,3 @@
-const { getGame } = require('./dbHandler');
 const dbHandler = require('./dbHandler');
 
 /**
@@ -48,8 +47,9 @@ function createDeck() {
 }
 
 /**
- * 
- * @param {*} gameID 
+ * assigns data for first round
+ * @param {number} gameID id of game
+ * @returns {Promise<void>}
  */
 async function startFirstRound(gameID) {
     const game = await dbHandler.getGame(gameID);
@@ -143,9 +143,10 @@ async function nextTurn(gameID) {
  * adds corresponding points and rank for player
  * @param {number} gameID id of game
  * @param {string} playerName name of player
+ * @returns {Promise<void>}
  */
 async function setWinnerPoints(gameID, playerName) {
-    const game = await getGame(gameID);
+    const game = await dbHandler.getGame(gameID);
     const player = game.players.find(_player => _player.name = playerName);
     player.points += game.remainingPlayers.length;
     
@@ -156,6 +157,11 @@ async function setWinnerPoints(gameID, playerName) {
 
 }
 
+/**
+ * assigns data for next round
+ * @param {number} gameID id of game
+ * @returns {Promise<void>}
+ */
 async function nextRound(gameID) {
     const game = await getGame(gameID);
 
@@ -171,6 +177,36 @@ async function nextRound(gameID) {
     await startGame(gameID);
 }
 
+async function switchCards(gameID, playerName, cards) {
+    const game = await dbHandler.getGame(gameID);
+    const player = game.players.find(_player => _player.name = playerName);
+    const rank = player.rank;
+
+    if (rank === 1 && cards.length === 2) {
+        const greater = game.players.find(_player => _player.rank === game.players.length);
+        const min = Math.min(...greater.cards);
+        let index = greater.cards.indexOf(min);
+        greater.cards.splice(index, 1);
+        const min2 = Math.min(...greater.cards);
+        index = greater.cards.indexOf(min2);
+        greater.cards.splice(index2, 1);
+        greater.cards.push(cards);
+
+        await game.save();
+        await dbHandler.removeCards(gameID, playerName, cards);
+    } else if (rank === 2 && cards.length === 1) {
+        const lesser = game.players.find(_player => _player.rank === game.players.length - 1);
+        const min = Math.min(...lesser.cards);
+        const index = lesser.cards.indexOf(min);
+        lesser.cards.splice(index, 1);
+        
+        await game.save();
+        await dbHandler.removeCards(gameID, playerName, cards);
+    } else {
+        throw "cards not valid";
+    }
+}
+
 module.exports = {
     createDeck: createDeck,
     startGame: startGame,
@@ -178,5 +214,6 @@ module.exports = {
     play: playCards,
     next: nextTurn,
     points: setWinnerPoints,
-    nextRound: nextRound
+    nextRound: nextRound,
+    switch: switchCards
 };

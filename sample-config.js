@@ -8,6 +8,5 @@ config.set('db_port', '27017');
 config.set('db_name', 'thegreatdalmuti');
 config.set('jwt_secret', 'mySecret');
 config.set('api_baseURL', '/api/');
-config.set('test', '/api/');
 
 module.exports = config;

@@ -36,7 +36,8 @@ async function createGame() {
         currentPlayer: '',
         cardStack: [],
         lastPlayed: '',
-        remainingPlayers: []
+        remainingPlayers: [],
+        cardsSwitched: false
     });
     await newGame.save();
     return gameID;
@@ -120,6 +121,7 @@ async function getLobbyData(gameID) {
     delete game._id;
     delete game.__v;
     delete game.cardStack;
+    delete game.currentPlayer;
     delete game.remainingPlayers;
     delete game.lastPlayed;
 
@@ -363,6 +365,18 @@ async function checkRemainingPlayers(gameID) {
     }
 }
 
+async function checkCardsSwitched(gameID) {
+    const game = await getGame(gameID);
+    return game.cardsSwitched;
+}
+
+async function checkSwitchable(gameID, playerName) {
+    const game = await getGame(gameID);
+    const rank = game.players.find(_player => _player.name === playerName);
+
+    return [1,2].includes(rank);
+}
+
 module.exports = {
     create: createGame,
     login: loginPlayer,
@@ -380,5 +394,7 @@ module.exports = {
     checkCurrent: checkCurrentPlayer,
     removeCards: removeCards,
     clear: clearStack,
-    remaining: checkRemainingPlayers
+    remaining: checkRemainingPlayers,
+    checkSwitched: checkCardsSwitched,
+    checkSwitchable: checkSwitchable
 };

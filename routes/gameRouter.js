@@ -148,4 +148,55 @@ router.post(baseURL + 'pass', [
     }
 });
 
+/**
+ * switch card at beginning of round
+ */
+router.post(baseURL + 'switch', [
+    body('cards').exists().isArray(),
+    header('authorization').exists().isString().trim().escape()
+], async (req, res) => {
+    try {
+        validationResult(req).throw();
+
+        cards = req.body.cards;
+
+        // user switches cards
+        if (jwtHandler.checkToken(req.header('Authorization'))) {
+            const jwt = req.header('Authorization');
+            const decode = jwtHandler.decodeToken(jwt);
+
+            if (await dbHandler.checkGame(decode.game)) {
+                if (await dbHandler.status(decode.game)) {
+                    if (await dbHandler.checkSwitched(decode.game)) {
+                        if (await dbHandler.checkSwitchable(decode.game, decode.name)) {
+                            try {
+                                await gameHandler.switch(decode.game, decode.name, cards);    
+                            } catch (error) {
+                                if (error === "cards not valid") {
+                                    res.status(400).json({ response: 'cards not valid'});
+                                }
+                            }
+                        } else {
+                            res.status(400).json({ response: 'you cannot switch cards'});
+                        }
+                    } else {
+                        res.status(400).json({ response: 'cards already switched'});
+                    }
+                } else {
+                    res.status(400).json({ response: 'game has not started'});
+                }
+            }
+        } else {
+            res.status(400).json({ response: 'authorization not valid'});
+        }
+    } catch (err) {
+        if (err.errors) {
+            res.status(400).json({ response: err.errors[0].param + ' not valid' });
+        } else {
+            console.log(err);
+            res.status(400).json({ response: err});
+        }
+    }
+});
+
 module.exports = router;

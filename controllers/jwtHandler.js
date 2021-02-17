@@ -37,7 +37,7 @@ function decodeToken(token) {
         decoded = jwt.decode(token);
         delete decoded.iat;
         delete decoded.exp;
-        return decoded;4
+        return decoded;
     } catch (error) {
         return null;
     }
